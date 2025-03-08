@@ -68,7 +68,7 @@ def main():
                     "conflict_resolution": "b wins",
                 },
                 "pair cal_upload": {
-                    "a": "cal_input",
+                    "a": "cal",
                     "b": "caldav",
                     "collections": [cfg.BIRTHDAY_CALENDAR_ID],
                     "conflict_resolution": "a wins",
@@ -106,9 +106,12 @@ def main():
                     ct_month = int(m.group(1))
                     ct_day = int(m.group(2))
                     continue
-        if not ct_name and ct_month and ct_day:
+        if not (ct_name and ct_month and ct_day):
+            log(f"Skipping {ct_name or contact_uuid} as data was not found in card")
             continue
+        log(f"Registering {ct_name} with birthday {ct_month:02d}-{ct_day:02d}")
         birthdays[f"bf-{contact_uuid}"] = (ct_name, ct_month, ct_day)
+    log(f"Total birthday count: {len(birthdays)}")
     log("Generating birthday calendar")
     try:
         shutil.rmtree(cal_dir / cfg.BIRTHDAY_CALENDAR_ID)
