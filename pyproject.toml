@@ -1,0 +1,18 @@
+[project]
+name = "birthday-filter"
+version = "0.1.0"
+description = "Creates a copy of a birthday calendar filtered to only specific people"
+authors = [
+    {name = "Radian LLC",email = "contact+birthday-filter@radian.codes"}
+]
+readme = "README.md"
+requires-python = ">=3.10,<4"
+dependencies = [
+    "vdirsyncer (>=0.19.3,<0.20.0)",
+    "python-dotenv (>=1.0.1,<2.0.0)",
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
