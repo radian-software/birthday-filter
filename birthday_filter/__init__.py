@@ -12,22 +12,6 @@ def log(msg):
     print(f"[birthday-filter] {msg}")
 
 
-def format_scfg(o: dict, indent="") -> str:
-    if isinstance(o, dict):
-        lines = []
-        if indent:
-            lines.append("{")
-        for key, value in o.items():
-            lines.append(indent + key + " " + format_scfg(value, indent+"  "))
-        if indent:
-            lines.append("}")
-            lines.append("")
-        return "\n".join(lines)
-    if isinstance(o, list):
-        return " ".join(format_scfg(i, indent+"  ") for i in o)
-    return str(o)
-
-
 def main():
     log("Doing initial setup")
     cfg.DATA_DIR.mkdir(parents=True, exist_ok=True)
