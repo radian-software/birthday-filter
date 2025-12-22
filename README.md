@@ -13,10 +13,11 @@ having it show up on a calendar.
 Hence, a very simple cron job that just grabs the contacts database,
 parses out only the contacts that are starred, and creates a calendar
 out of them. For both of the download and upload tasks, the existing
-tool vdirsyncer is used because there is no need to reinvent the
-wheel.
+tool pimsync is used because there is no need to reinvent the wheel.
 
 ## Usage
+
+Install [pimsync](https://pimsync.whynothugo.nl/install.html).
 
 Clone the repo and create `.env` file in it:
 
