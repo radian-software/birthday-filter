@@ -64,7 +64,7 @@ pair cal_upload {{
   collection {cfg.BIRTHDAY_CALENDAR_ID}
   conflict_resolution keep a
 }}
-        """)
+        """.strip() + "\n")
     (card_dir / "Default").mkdir(parents=True, exist_ok=True)
     log("Running pimsync to download cards")
     run_vd = lambda *args: subprocess.run(
