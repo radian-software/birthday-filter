@@ -12,64 +12,78 @@ def log(msg):
     print(f"[birthday-filter] {msg}")
 
 
+def format_vd_cfg(o: dict) -> dict:
+    def recurse(o: Any) -> dict | str:
+        if isinstance(o, dict):
+            return {k: recurse(v) for k, v in o.items()}
+        return json.dumps(o)
+
+    return {k: recurse(v) for k, v in o.items()}
+
+
 def main():
     log("Doing initial setup")
     cfg.DATA_DIR.mkdir(parents=True, exist_ok=True)
     # Create one directory to read the cards (it is read-only) and
     # then two directories to read and write the calendar (it is
     # read-write).
-    card_dir = cfg.DATA_DIR / "pimsync-cards"
-    cal_dir = cfg.DATA_DIR / "pimsync-cal"
-    vd_cfg_file = cfg.DATA_DIR / "pimsync-config"
-    vd_status_file = cfg.DATA_DIR / "pimsync-status"
-    with open(vd_cfg_file, "w") as f:
-        f.write(f"""
-status_path {vd_status_file}
-
-storage cards {{
-  type vdir/vcard
-  path {card_dir}
-}}
-
-storage cal {{
-  type vdir/icalendar
-  path {cal_dir}
-}}
-
-storage carddav {{
-  type carddav
-  url {cfg.CARDDAV.url}
-  username {cfg.CARDDAV.username}
-  password {cfg.CARDDAV.password}
-  read_only
-}}
-
-storage caldav {{
-  type caldav
-  url {cfg.CALDAV.url}
-  username {cfg.CALDAV.username}
-  password {cfg.CALDAV.password}
-}}
-
-pair card_download {{
-  storage_a cards
-  storage_b carddav
-  collections from b
-  conflict_resolution keep b
-}}
-
-pair cal_upload {{
-  storage_a cal
-  storage_b caldav
-  collection {cfg.BIRTHDAY_CALENDAR_ID}
-  conflict_resolution keep a
-}}
-        """.strip() + "\n")
-    (card_dir / "Default").mkdir(parents=True, exist_ok=True)
-    log("Running pimsync to download cards")
-    run_vd = lambda *args: subprocess.run(
-        ["pimsync", "-c", str(vd_cfg_file), *args], check=True
+    card_dir = cfg.DATA_DIR / "vdirsyncer-cards"
+    cal_dir = cfg.DATA_DIR / "vdirsyncer-cal"
+    vd_cfg_file = cfg.DATA_DIR / "vdirsyncer-config"
+    vd_status_file = cfg.DATA_DIR / "vdirsyncer-status"
+    vd_cfg = configparser.ConfigParser()
+    vd_cfg.update(
+        format_vd_cfg(
+            {
+                "general": {
+                    "status_path": str(vd_status_file),
+                },
+                "storage cards": {
+                    "type": "filesystem",
+                    "path": str(card_dir),
+                    "fileext": ".vcf",
+                },
+                "storage cal": {
+                    "type": "filesystem",
+                    "path": str(cal_dir),
+                    "fileext": ".ics",
+                },
+                "storage carddav": {
+                    "type": "carddav",
+                    "url": cfg.CARDDAV.url,
+                    "username": cfg.CARDDAV.username,
+                    "password": cfg.CARDDAV.password,
+                    "read_only": True,
+                },
+                "storage caldav": {
+                    "type": "caldav",
+                    "url": cfg.CALDAV.url,
+                    "username": cfg.CALDAV.username,
+                    "password": cfg.CALDAV.password,
+                },
+                "pair card_download": {
+                    "a": "cards",
+                    "b": "carddav",
+                    "collections": ["from b"],
+                    "conflict_resolution": "b wins",
+                },
+                "pair cal_upload": {
+                    "a": "cal",
+                    "b": "caldav",
+                    "collections": [cfg.BIRTHDAY_CALENDAR_ID],
+                    "conflict_resolution": "a wins",
+                },
+            }
+        ),
     )
+    with open(vd_cfg_file, "w") as f:
+        vd_cfg.write(f)
+    (card_dir / "Default").mkdir(parents=True, exist_ok=True)
+    log("Running vdirsyncer to download cards")
+    run_vd = lambda *args: subprocess.run(
+        ["vdirsyncer", f"--config={str(vd_cfg_file)}", *args], check=True
+    )
+    run_vd("discover", "card_download")
     run_vd("sync", "card_download")
     log("Extracting list of starred contacts")
     with open(card_dir / "Default" / "vips.vcf") as f:
@@ -121,5 +135,6 @@ pair cal_upload {{
             f.write("STATUS:CONFIRMED\n")
             f.write("END:VEVENT\n")
             f.write("END:VCALENDAR\n")
-    log("Running pimsync to upload calendar")
+    log("Running vdirsyncer to upload calendar")
+    run_vd("discover", "cal_upload")
     run_vd("sync", "cal_upload")
