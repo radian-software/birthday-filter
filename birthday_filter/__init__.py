@@ -3,7 +3,10 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 from typing import Any
+
+import vobject
 
 import birthday_filter.config as cfg
 
@@ -22,6 +25,7 @@ def format_vd_cfg(o: dict) -> dict:
 
 
 def main():
+    strange_error = False
     log("Doing initial setup")
     cfg.DATA_DIR.mkdir(parents=True, exist_ok=True)
     # Create one directory to read the cards (it is read-only) and
@@ -95,20 +99,23 @@ def main():
     birthdays = {}
     for contact_uuid in sorted(contact_uuids):
         with open(card_dir / "Default" / f"{contact_uuid}.vcf") as f:
-            ct_name = None
-            ct_month = None
-            ct_day = None
-            for line in f:
-                if m := re.match(r"FN:(.+)$", line):
-                    ct_name = m.group(1)
-                    continue
-                if m := re.match(r"BDAY[;:].*[0-9]{4}-([0-9]{2})-([0-9]{2})$", line):
-                    ct_month = int(m.group(1))
-                    ct_day = int(m.group(2))
-                    continue
-        if not (ct_name and ct_month and ct_day):
-            log(f"Skipping {ct_name or contact_uuid} as data was not found in card")
+            card = vobject.readOne(f)
+        try:
+            ct_name = card.fn.value
+        except AttributeError:
+            log(f"Skipping {contact_uuid} as the contact lacks a name")
+            strange_error = True
             continue
+        try:
+            birthday = card.bday.value
+        except AttributeError:
+            log(f"Skipping {ct_name} as the contact lacks a birthday")
+            continue
+        if not (m := re.fullmatch(r"[0-9]{4}-?([0-9]{2})-?([0-9]{2})", birthday)):
+            log(f"Skipping {ct_name} as birthday {birthday} is in a strange format")
+            strange_error = True
+            continue
+        ct_month, ct_day = map(int, m.groups())
         log(f"Registering {ct_name} with birthday {ct_month:02d}-{ct_day:02d}")
         birthdays[f"bf-{contact_uuid}"] = (ct_name, ct_month, ct_day)
     log(f"Total birthday count: {len(birthdays)}")
@@ -138,3 +145,6 @@ def main():
     log("Running vdirsyncer to upload calendar")
     run_vd("discover", "cal_upload")
     run_vd("sync", "cal_upload")
+    if strange_error:
+        log("Exiting with non-zero return status, see error above")
+        sys.exit(1)
