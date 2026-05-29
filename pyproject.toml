@@ -8,8 +8,8 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.10,<4"
 dependencies = [
-    "vdirsyncer (>=0.19.3,<0.20.0)",
-    "python-dotenv (>=1.0.1,<2.0.0)",
+    "vdirsyncer (>=0.20.0,<0.21.0)",
+    "python-dotenv (>=1.2.2,<2.0.0)",
     "vobject (>=0.9.9,<0.10.0)",
 ]
 
